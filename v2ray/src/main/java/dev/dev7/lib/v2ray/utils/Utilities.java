@@ -138,73 +138,72 @@ public class Utilities {
         return config;
     }
 
-    public static boolean refillV2rayConfig(String remark, String config, final ArrayList<String> blockedApplications) {
-        currentConfig.remark = remark;
-        currentConfig.blockedApplications = blockedApplications;
+public static boolean refillV2rayConfig(String remark, String config, final ArrayList blockedApplications) {
+    currentConfig.remark = remark;
+    currentConfig.blockedApplications = blockedApplications;
+
+    try {
+        JSONObject config_json = new JSONObject(normalizeV2rayFullConfig(config));
+
+        // force proxy-only + socks on 127.0.0.1:2090
+        config_json = forceProxyOnlyConfig(config_json);
+
+        currentConfig.localSocksPort = 2090;
+        currentConfig.localHttpPort = 0;
+
         try {
-            JSONObject config_json = new JSONObject(normalizeV2rayFullConfig(config));
-            try {
-                JSONArray inbounds = config_json.getJSONArray("inbounds");
-                for (int i = 0; i < inbounds.length(); i++) {
-                    try {
-                        if (inbounds.getJSONObject(i).getString("protocol").equals("socks")) {
-                            currentConfig.localSocksPort = inbounds.getJSONObject(i).getInt("port");
-                        }
-                    } catch (Exception e) {
-                        //ignore
-                    }
-                    try {
-                        if (inbounds.getJSONObject(i).getString("protocol").equals("http")) {
-                            currentConfig.localHttpPort = inbounds.getJSONObject(i).getInt("port");
-                        }
-                    } catch (Exception e) {
-                        //ignore
-                    }
-                }
-            } catch (Exception e) {
-                Log.w(Utilities.class.getSimpleName(), "startCore warn => can`t find inbound port of socks5 or http.");
-                return false;
-            }
-            try {
-                currentConfig.currentServerAddress = config_json.getJSONArray("outbounds").getJSONObject(0).getJSONObject("settings").getJSONArray("vnext").getJSONObject(0).getString("address");
-                currentConfig.currentServerPort = config_json.getJSONArray("outbounds").getJSONObject(0).getJSONObject("settings").getJSONArray("vnext").getJSONObject(0).getInt("port");
-            } catch (Exception e) {
-                currentConfig.currentServerAddress = config_json.getJSONArray("outbounds").getJSONObject(0).getJSONObject("settings").getJSONArray("servers").getJSONObject(0).getString("address");
-                currentConfig.currentServerPort = config_json.getJSONArray("outbounds").getJSONObject(0).getJSONObject("settings").getJSONArray("servers").getJSONObject(0).getInt("port");
-            }
-            try {
-                if (config_json.has("policy")) {
-                    config_json.remove("policy");
-                }
-                if (config_json.has("stats")) {
-                    config_json.remove("stats");
-                }
-            } catch (Exception ignore_error) {
-                //ignore
-            }
-            if (currentConfig.enableTrafficStatics) {
-                try {
-                    JSONObject policy = new JSONObject();
-                    JSONObject levels = new JSONObject();
-                    levels.put("8", new JSONObject().put("connIdle", 300).put("downlinkOnly", 1).put("handshake", 4).put("uplinkOnly", 1));
-                    JSONObject system = new JSONObject().put("statsOutboundUplink", true).put("statsOutboundDownlink", true);
-                    policy.put("levels", levels);
-                    policy.put("system", system);
-                    config_json.put("policy", policy);
-                    config_json.put("stats", new JSONObject());
-                } catch (Exception e) {
-                    Log.e("log is here",e.toString());
-                    currentConfig.enableTrafficStatics = false;
-                    //ignore
-                }
-            }
-            currentConfig.fullJsonConfig = config_json.toString();
-            return true;
+            currentConfig.currentServerAddress = config_json.getJSONArray("outbounds")
+                    .getJSONObject(0).getJSONObject("settings")
+                    .getJSONArray("vnext").getJSONObject(0).getString("address");
+            currentConfig.currentServerPort = config_json.getJSONArray("outbounds")
+                    .getJSONObject(0).getJSONObject("settings")
+                    .getJSONArray("vnext").getJSONObject(0).getInt("port");
         } catch (Exception e) {
-            Log.e(Utilities.class.getSimpleName(), "parseV2rayJsonFile failed => ", e);
-            return false;
+            currentConfig.currentServerAddress = config_json.getJSONArray("outbounds")
+                    .getJSONObject(0).getJSONObject("settings")
+                    .getJSONArray("servers").getJSONObject(0).getString("address");
+            currentConfig.currentServerPort = config_json.getJSONArray("outbounds")
+                    .getJSONObject(0).getJSONObject("settings")
+                    .getJSONArray("servers").getJSONObject(0).getInt("port");
         }
+
+        try {
+            if (config_json.has("policy")) {
+                config_json.remove("policy");
+            }
+            if (config_json.has("stats")) {
+                config_json.remove("stats");
+            }
+        } catch (Exception ignore_error) {}
+
+        if (currentConfig.enableTrafficStatics) {
+            try {
+                JSONObject policy = new JSONObject();
+                JSONObject levels = new JSONObject();
+                levels.put("8", new JSONObject()
+                        .put("connIdle", 300)
+                        .put("downlinkOnly", 1)
+                        .put("handshake", 4)
+                        .put("uplinkOnly", 1));
+                JSONObject system = new JSONObject()
+                        .put("statsOutboundUplink", true)
+                        .put("statsOutboundDownlink", true);
+                policy.put("levels", levels);
+                policy.put("system", system);
+                config_json.put("policy", policy);
+                config_json.put("stats", new JSONObject());
+            } catch (Exception e) {
+                currentConfig.enableTrafficStatics = false;
+            }
+        }
+
+        currentConfig.fullJsonConfig = config_json.toString();
+        return true;
+    } catch (Exception e) {
+        Log.e(Utilities.class.getSimpleName(), "parseV2rayJsonFile failed => ", e);
+        return false;
     }
+}
 
     public static String normalizeIpv6(String address) {
         if (isIpv6Address(address) && !address.contains("[") && !address.contains("]")) {
