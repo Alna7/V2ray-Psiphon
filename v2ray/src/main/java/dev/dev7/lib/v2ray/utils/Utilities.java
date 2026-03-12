@@ -33,6 +33,40 @@ public class Utilities {
         return Base64.encodeToString(Arrays.copyOf(androidIdBytes, 32), Base64.NO_PADDING | Base64.URL_SAFE);
     }
 
+    private static JSONObject forceProxyOnlyConfig(JSONObject configJson) throws Exception {
+        JSONArray inbounds = configJson.getJSONArray("inbounds");
+        JSONArray newInbounds = new JSONArray();
+
+        for (int i = 0; i < inbounds.length(); i++) {
+            JSONObject inbound = inbounds.getJSONObject(i);
+            String protocol = inbound.optString("protocol", "");
+
+            if ("socks".equals(protocol)) {
+                inbound.put("listen", "127.0.0.1");
+                inbound.put("port", 2090);
+                newInbounds.put(inbound);
+            }
+        }
+
+        // اگر inbound socks نداشت، یکی بساز
+        if (newInbounds.length() == 0) {
+            JSONObject socksInbound = new JSONObject();
+            socksInbound.put("listen", "127.0.0.1");
+            socksInbound.put("port", 2090);
+            socksInbound.put("protocol", "socks");
+
+            JSONObject settings = new JSONObject();
+            settings.put("udp", true);
+            socksInbound.put("settings", settings);
+
+            newInbounds.put(socksInbound);
+        }
+
+        configJson.put("inbounds", newInbounds);
+        return configJson;
+    }
+
+
     public static void CopyFiles(InputStream src, File dst) throws IOException {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             try (OutputStream out = Files.newOutputStream(dst.toPath())) {
