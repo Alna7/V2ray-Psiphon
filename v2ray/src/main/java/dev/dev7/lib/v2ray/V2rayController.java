@@ -113,27 +113,26 @@ public class V2rayController {
     }
 
     public static void forceProxyMode() {
-    V2rayConfigs.serviceMode = V2rayConstants.SERVICE_MODES.PROXY_MODE;
-}
-
-public static void startV2ray(final Activity activity, final String remark, final String config, final ArrayList<String> blocked_apps) {
-    if (!Utilities.refillV2rayConfig(remark, config, blocked_apps)) {
-        return;
+        V2rayConfigs.serviceMode = V2rayConstants.SERVICE_MODES.PROXY_MODE;
     }
-
-    // proxy-only path: no VPN permission flow
-    if (serviceMode == V2rayConstants.SERVICE_MODES.PROXY_MODE) {
-        startTunnel(activity);
-        return;
+    public static void startV2ray(final Activity activity, final String remark, final String config, final ArrayList<String> blocked_apps) {
+        if (!Utilities.refillV2rayConfig(remark, config, blocked_apps)) {
+            return;
+        }
+        if (serviceMode == V2rayConstants.SERVICE_MODES.PROXY_MODE) {
+            startTunnel(activity);
+            return;
+        }
+        if (!isPreparedForConnection(activity)) {
+            prepareForConnection(activity);
+        } else {
+            startTunnel(activity);
+        }
     }
+        
 
-    // original VPN path
-    if (!isPreparedForConnection(activity)) {
-        prepareForConnection(activity);
-    } else {
-        startTunnel(activity);
-    }
-}
+    
+
 
     public static void stopV2ray(final Context context) {
         Intent stop_intent = new Intent(V2RAY_SERVICE_COMMAND_INTENT);
